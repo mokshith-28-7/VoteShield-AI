@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoteShield AI – Online Polling Management System</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #0a0f1e;
+    --paper: #f5f3ee;
+    --accent: #1a3cff;
+    --accent2: #ff3c1a;
+    --soft: #e8e5dd;
+    --muted: #7a7870;
+    --card-bg: #ffffff;
+    --green: #00c97c;
+    --border: rgba(10,15,30,0.10);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'DM Sans', sans-serif; background: var(--paper); color: var(--ink); overflow-x: hidden; }
+ 
+  /* NAVIGATION */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: rgba(245,243,238,0.92); backdrop-filter: blur(16px);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 5%; height: 64px;
+  }
+  .nav-logo { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.2rem; color: var(--ink); text-decoration: none; letter-spacing: -0.03em; display: flex; align-items: center; gap: 8px; }
+  .nav-logo span { display: inline-block; width: 28px; height: 28px; background: var(--accent); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .nav-logo span svg { width: 16px; height: 16px; fill: #fff; }
+  .nav-links { display: flex; gap: 32px; list-style: none; }
+  .nav-links a { font-size: 0.9rem; font-weight: 500; color: var(--muted); text-decoration: none; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--ink); }
+  .nav-cta { background: var(--ink); color: #fff; padding: 9px 22px; border-radius: 100px; font-size: 0.88rem; font-weight: 500; text-decoration: none; transition: background 0.2s, transform 0.15s; }
+  .nav-cta:hover { background: var(--accent); transform: translateY(-1px); }
+ 
+  /* HERO */
+  .hero {
+    min-height: 100vh; padding: 140px 5% 80px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 80px; align-items: center;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; top: -200px; right: -200px;
+    width: 700px; height: 700px;
+    background: radial-gradient(circle, rgba(26,60,255,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .hero-badge { display: inline-flex; align-items: center; gap: 8px; background: rgba(26,60,255,0.08); border: 1px solid rgba(26,60,255,0.15); color: var(--accent); font-size: 0.8rem; font-weight: 500; padding: 6px 14px; border-radius: 100px; margin-bottom: 28px; animation: fadeUp 0.6s ease both; }
+  .hero-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); animation: pulse-dot 2s infinite; }
+  @keyframes pulse-dot { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(1.4)} }
+  .hero h1 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(2.8rem, 5vw, 4.2rem); line-height: 1.05; letter-spacing: -0.04em; margin-bottom: 24px; animation: fadeUp 0.6s 0.1s ease both; }
+  .hero h1 em { font-style: normal; color: var(--accent); }
+  .hero p { font-size: 1.05rem; color: var(--muted); line-height: 1.7; max-width: 480px; margin-bottom: 40px; animation: fadeUp 0.6s 0.2s ease both; }
+  .hero-actions { display: flex; gap: 14px; flex-wrap: wrap; animation: fadeUp 0.6s 0.3s ease both; }
+  .btn-primary { background: var(--ink); color: #fff; padding: 14px 30px; border-radius: 100px; font-size: 0.95rem; font-weight: 500; text-decoration: none; transition: all 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+  .btn-primary:hover { background: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(26,60,255,0.25); }
+  .btn-secondary { background: transparent; color: var(--ink); padding: 14px 30px; border-radius: 100px; font-size: 0.95rem; font-weight: 500; text-decoration: none; border: 1.5px solid var(--border); transition: all 0.2s; }
+  .btn-secondary:hover { border-color: var(--ink); transform: translateY(-2px); }
+ 
+  /* HERO VISUAL */
+  .hero-visual { position: relative; animation: fadeIn 0.8s 0.3s ease both; }
+  .hero-card-stack { position: relative; height: 420px; }
+  .hcard { position: absolute; border-radius: 20px; padding: 24px; }
+  .hcard-main { inset: 0; background: var(--ink); color: #fff; display: flex; flex-direction: column; justify-content: space-between; }
+  .hcard-main h3 { font-family:'Syne',sans-serif; font-size:1.1rem; font-weight:700; margin-bottom:8px; }
+  .election-info { display: flex; flex-direction: column; gap: 12px; margin-top: 20px; }
+  .election-row { display: flex; justify-content: space-between; align-items: center; padding: 14px 16px; background: rgba(255,255,255,0.06); border-radius: 12px; }
+  .election-row .label { font-size: 0.8rem; color: rgba(255,255,255,0.5); }
+  .election-row .value { font-family:'Syne',sans-serif; font-weight:700; font-size:1.1rem; }
+  .vote-btn { background: var(--accent); color: #fff; border: none; padding: 14px 28px; border-radius: 100px; font-family:'Syne',sans-serif; font-weight:700; font-size: 0.95rem; cursor: pointer; width: 100%; margin-top:16px; transition: all 0.2s; }
+  .vote-btn:hover { filter: brightness(1.1); }
+  .hcard-float { background: #fff; box-shadow: 0 20px 60px rgba(0,0,0,0.12); width: 180px; }
+  .hcard-float.top-right { top: -24px; right: -24px; }
+  .hcard-float.bottom-left { bottom: -20px; left: -24px; }
+  .stat-val { font-family:'Syne',sans-serif; font-size:1.8rem; font-weight:800; }
+  .stat-lbl { font-size:0.75rem; color:var(--muted); margin-top:4px; }
+  .stat-icon { width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center; margin-bottom:10px; font-size:1.1rem; }
+  .si-blue { background: rgba(26,60,255,0.10); color: var(--accent); }
+  .si-green { background: rgba(0,201,124,0.12); color: var(--green); }
+  .ai-badge { display:inline-flex; align-items:center; gap:6px; background: rgba(0,201,124,0.12); color: var(--green); font-size:0.72rem; font-weight:600; padding:4px 10px; border-radius:100px; margin-top:8px; }
+ 
+  @keyframes fadeUp { from { opacity:0; transform:translateY(24px); } to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+ 
+  /* TRUST BAR */
+  .trust-bar { background: var(--soft); padding: 20px 5%; display: flex; align-items: center; justify-content: center; gap: 48px; flex-wrap: wrap; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+  .trust-item { display: flex; align-items: center; gap: 10px; font-size: 0.85rem; color: var(--muted); font-weight: 500; }
+  .trust-item svg { width: 20px; height: 20px; opacity: 0.6; }
+ 
+  /* FEATURES */
+  .section { padding: 100px 5%; }
+  .section-label { font-size: 0.78rem; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin-bottom: 16px; }
+  .section-title { font-family: 'Syne', sans-serif; font-weight: 800; font-size: clamp(2rem, 3.5vw, 3rem); letter-spacing: -0.03em; line-height: 1.1; margin-bottom: 16px; }
+  .section-sub { color: var(--muted); font-size: 1rem; line-height: 1.7; max-width: 560px; }
+  .features-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; margin-top: 60px; }
+  .feat-card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 20px; padding: 32px; transition: all 0.25s; cursor: default; }
+  .feat-card:hover { transform: translateY(-4px); box-shadow: 0 20px 48px rgba(0,0,0,0.07); border-color: rgba(26,60,255,0.2); }
+  .feat-icon { width: 48px; height: 48px; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; margin-bottom: 20px; }
+  .feat-card h3 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1.05rem; margin-bottom: 10px; }
+  .feat-card p { font-size: 0.88rem; color: var(--muted); line-height: 1.65; }
+  .bg-blue { background: rgba(26,60,255,0.08); }
+  .bg-red { background: rgba(255,60,26,0.08); }
+  .bg-green { background: rgba(0,201,124,0.10); }
+  .bg-purple { background: rgba(120,60,255,0.08); }
+  .bg-amber { background: rgba(255,180,26,0.10); }
+  .bg-cyan { background: rgba(26,200,255,0.08); }
+ 
+  /* HOW IT WORKS */
+  .how-section { background: var(--ink); color: #fff; padding: 100px 5%; }
+  .how-section .section-label { color: rgba(26,60,255,0.8); }
+  .how-section .section-title { color: #fff; }
+  .how-section .section-sub { color: rgba(255,255,255,0.5); }
+  .steps-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2px; margin-top: 60px; background: rgba(255,255,255,0.06); border-radius: 20px; overflow: hidden; }
+  .step { padding: 40px 32px; background: var(--ink); transition: background 0.25s; position: relative; }
+  .step:hover { background: rgba(26,60,255,0.12); }
+  .step-num { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 3rem; color: rgba(255,255,255,0.06); line-height: 1; margin-bottom: 20px; }
+  .step-icon { font-size: 1.8rem; margin-bottom: 16px; }
+  .step h3 { font-family: 'Syne', sans-serif; font-weight: 700; font-size: 1rem; margin-bottom: 10px; }
+  .step p { font-size: 0.85rem; color: rgba(255,255,255,0.5); line-height: 1.65; }
+ 
+  /* USER ROLES */
+  .roles-section { padding: 100px 5%; }
+  .roles-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; margin-top: 60px; }
+  .role-card { border-radius: 24px; padding: 40px; position: relative; overflow: hidden; }
+  .role-card.voter { background: linear-gradient(135deg, #0a0f1e 60%, #1a3cff22); border: 1px solid rgba(26,60,255,0.2); color: #fff; }
+  .role-card.admin { background: var(--soft); border: 1px solid var(--border); }
+  .role-card.officer { background: linear-gradient(135deg, #00c97c10, #00c97c05); border: 1px solid rgba(0,201,124,0.2); }
+  .role-card.sysadmin { background: linear-gradient(135deg, #ff3c1a0a, #ff3c1a05); border: 1px solid rgba(255,60,26,0.15); }
+  .role-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 12px; opacity: 0.6; }
+  .role-card h3 { font-family: 'Syne', sans-serif; font-weight: 800; font-size: 1.6rem; margin-bottom: 20px; }
+  .role-perms { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .role-perms li { font-size: 0.88rem; display: flex; align-items: center; gap: 10px; line-height: 1.4; }
+  .role-perms li::before { content: '→'; font-weight: 700; opacity: 0.5; flex-shrink: 0; }
+  .voter .role-perms li { color: rgba(255,255,255,0.75); }
+ 
+  /* LIVE DASHBOARD PREVIEW */
+  .dashboard-section { background: var(--soft); padding: 100px 5%; }
+  .dash-wrap { background: #fff; border-radius: 24px; border: 1px solid var(--border); padding: 32px; margin-top: 60px; box-shadow: 0 24px 80px rgba(0,0,0,0.06); }
+  .dash-topbar { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .dot-r { width:12px;height:12px;border-radius:50%;background:#ff5f57; }
+  .dot-y { width:12px;height:12px;border-radius:50%;background:#ffbd2e; }
+  .dot-g { width:12px;height:12px;border-radius:50%;background:#28ca41; }
+  .dash-title { margin-left: 8px; font-family:'Syne',sans-serif; font-weight:700; font-size:0.95rem; color:var(--muted); }
+  .dash-inner { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+  .dash-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 20px; }
+  .dash-stat { background: var(--paper); border-radius: 14px; padding: 20px; }
+  .ds-num { font-family:'Syne',sans-serif; font-weight:800; font-size:1.8rem; }
+  .ds-lbl { font-size:0.75rem; color:var(--muted); margin-top:4px; }
+  .ds-trend { font-size:0.72rem; font-weight:600; color:var(--green); margin-top:6px; }
+  .chart-area { background: var(--paper); border-radius: 14px; padding: 20px; }
+  .chart-bar-wrap { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; }
+  .cbar { display: flex; align-items: center; gap: 12px; font-size: 0.82rem; }
+  .cbar-name { width: 90px; color: var(--muted); flex-shrink: 0; }
+  .cbar-track { flex: 1; background: var(--soft); border-radius: 100px; height: 10px; overflow: hidden; }
+  .cbar-fill { height: 100%; border-radius: 100px; transition: width 1.5s cubic-bezier(0.19,1,0.22,1); }
+  .cbar-pct { width: 40px; text-align: right; font-weight: 600; font-size: 0.8rem; }
+  .dash-side { display: flex; flex-direction: column; gap: 16px; }
+  .ds-card { background: var(--paper); border-radius: 14px; padding: 20px; }
+  .ds-card h4 { font-family:'Syne',sans-serif; font-weight:700; font-size:0.9rem; margin-bottom:14px; }
+  .alert-item { display:flex; align-items:flex-start; gap:10px; padding:10px 0; border-bottom:1px solid var(--border); }
+  .alert-item:last-child { border-bottom:none; padding-bottom:0; }
+  .alert-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-top:5px; }
+  .alert-item p { font-size:0.78rem; color:var(--muted); line-height:1.5; }
+  .activity-list { display:flex; flex-direction:column; gap:8px; }
+  .act-row { display:flex; align-items:center; justify-content:space-between; font-size:0.78rem; }
+  .act-name { color:var(--ink); font-weight:500; }
+  .act-time { color:var(--muted); }
+  .act-badge { font-size:0.65rem; padding:2px 8px; border-radius:100px; font-weight:600; }
+  .ab-ok { background: rgba(0,201,124,0.12); color:var(--green); }
+  .ab-warn { background: rgba(255,180,26,0.15); color:#d9900a; }
+ 
+  /* TECH STACK */
+  .tech-section { padding: 100px 5%; }
+  .tech-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-top: 60px; }
+  .tech-cat { background: var(--card-bg); border: 1px solid var(--border); border-radius: 16px; padding: 28px; }
+  .tech-cat-label { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+  .tech-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+  .tech-list li { font-size: 0.88rem; font-weight: 500; display: flex; align-items: center; gap: 8px; }
+  .tech-list li::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+ 
+  /* CTA */
+  .cta-section { padding: 100px 5%; text-align: center; }
+  .cta-box { background: var(--ink); color: #fff; border-radius: 28px; padding: 80px; max-width: 900px; margin: 0 auto; position: relative; overflow: hidden; }
+  .cta-box::before { content:''; position:absolute; top:-100px; left:-100px; width:400px; height:400px; background:radial-gradient(circle,rgba(26,60,255,0.25) 0%,transparent 70%); pointer-events:none; }
+  .cta-box::after { content:''; position:absolute; bottom:-80px; right:-80px; width:300px; height:300px; background:radial-gradient(circle,rgba(255,60,26,0.15) 0%,transparent 70%); pointer-events:none; }
+  .cta-box h2 { font-family:'Syne',sans-serif; font-weight:800; font-size:clamp(2rem,4vw,3rem); letter-spacing:-0.03em; margin-bottom:20px; }
+  .cta-box p { color:rgba(255,255,255,0.55); font-size:1rem; margin-bottom:40px; }
+  .cta-actions { display:flex; gap:16px; justify-content:center; flex-wrap:wrap; }
+  .btn-white { background:#fff; color:var(--ink); padding:14px 30px; border-radius:100px; font-weight:600; font-size:0.95rem; text-decoration:none; transition:all 0.2s; }
+  .btn-white:hover { background: var(--paper); transform:translateY(-2px); }
+  .btn-outline-white { border:1.5px solid rgba(255,255,255,0.25); color:#fff; padding:14px 30px; border-radius:100px; font-weight:500; font-size:0.95rem; text-decoration:none; transition:all 0.2s; }
+  .btn-outline-white:hover { border-color:#fff; }
+ 
+  /* FOOTER */
+  footer { background: var(--ink); color: rgba(255,255,255,0.45); padding: 48px 5%; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 20px; font-size: 0.83rem; }
+  footer strong { color:#fff; font-family:'Syne',sans-serif; font-weight:700; }
+  .footer-links { display: flex; gap: 24px; }
+  .footer-links a { color: rgba(255,255,255,0.4); text-decoration: none; transition: color 0.2s; }
+  .footer-links a:hover { color:#fff; }
+ 
+  /* Responsive */
+  @media (max-width: 900px) {
+    .hero { grid-template-columns: 1fr; gap: 60px; padding-top: 110px; }
+    .hero-visual { display: none; }
+    .features-grid { grid-template-columns: repeat(2, 1fr); }
+    .steps-grid { grid-template-columns: repeat(2, 1fr); }
+    .roles-grid { grid-template-columns: 1fr; }
+    .tech-grid { grid-template-columns: repeat(2, 1fr); }
+    .dash-inner { grid-template-columns: 1fr; }
+    .trust-bar { gap: 24px; }
+    nav .nav-links { display: none; }
+  }
+  @media (max-width: 600px) {
+    .features-grid { grid-template-columns: 1fr; }
+    .steps-grid { grid-template-columns: 1fr; }
+    .dash-stats { grid-template-columns: 1fr 1fr; }
+    .tech-grid { grid-template-columns: 1fr; }
+    .cta-box { padding: 48px 28px; }
+  }
+</style>
+</head>
+<body>
+ 
+<!-- NAVIGATION -->
+<nav>
+  <a href="#" class="nav-logo">
+    <span>
+      <svg viewBox="0 0 16 16"><path d="M8 1L2 4v4c0 3.3 2.5 6.4 6 7 3.5-.6 6-3.7 6-7V4L8 1z"/></svg>
+    </span>
+    VoteShield AI
+  </a>
+  <ul class="nav-links">
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How It Works</a></li>
+    <li><a href="#roles">User Roles</a></li>
+    <li><a href="#dashboard">Dashboard</a></li>
+    <li><a href="#tech">Tech Stack</a></li>
+  </ul>
+  <a href="/login" class="nav-cta">Login →</a>
+</nav>
+ 
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-badge">🔒 AI-Powered Secure Voting Platform</div>
+    <h1>Elections made <em>secure</em>, transparent & inclusive</h1>
+    <p>An AI-driven online polling management system that prevents fraud, enables remote voting, and delivers instant results — built for trust at scale.</p>
+    <div class="hero-actions">
+      <a href="/login" class="btn-primary">
+        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        Cast Your Vote
+      </a>
+      <a href="/admin" class="btn-secondary">Admin Dashboard →</a>
+    </div>
+  </div>
+ 
+  <div class="hero-visual">
+    <div class="hero-card-stack">
+      <div class="hcard hcard-main">
+        <div>
+          <div style="font-size:0.72rem;letter-spacing:0.08em;text-transform:uppercase;opacity:0.5;margin-bottom:4px;">2025 General Election</div>
+          <h3>Presidential Election — Round 1</h3>
+          <div style="font-size:0.8rem;opacity:0.45;margin-top:2px;">Voting closes Nov 12 · 11:59 PM IST</div>
+        </div>
+        <div class="election-info">
+          <div class="election-row">
+            <span class="label">Total Registered</span>
+            <span class="value">4,28,192</span>
+          </div>
+          <div class="election-row">
+            <span class="label">Votes Cast</span>
+            <span class="value" style="color:var(--green);">2,94,601</span>
+          </div>
+          <div class="election-row">
+            <span class="label">Turnout</span>
+            <span class="value">68.8%</span>
+          </div>
+        </div>
+        <a href="/login">
+          <button class="vote-btn">Cast Vote Securely →</button>
+        </a>
+      </div>
+ 
+      <div class="hcard hcard-float top-right" style="padding:20px;">
+        <div class="stat-icon si-green">🛡️</div>
+        <div class="stat-val" style="color:var(--green);">100%</div>
+        <div class="stat-lbl">Fraud Free Today</div>
+        <div class="ai-badge">✓ AI Verified</div>
+      </div>
+ 
+      <div class="hcard hcard-float bottom-left" style="padding:20px;">
+        <div class="stat-icon si-blue">⚡</div>
+        <div class="stat-val">1.2s</div>
+        <div class="stat-lbl">Avg. Vote Time</div>
+        <div style="font-size:0.72rem;color:var(--muted);margin-top:6px;">Real-time count</div>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<!-- TRUST BAR -->
+<div class="trust-bar">
+  <div class="trust-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+    256-bit Encrypted Votes
+  </div>
+  <div class="trust-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+    Real-time Result Processing
+  </div>
+  <div class="trust-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Multi-Role Access Control
+  </div>
+  <div class="trust-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+    Open Audit Trail
+  </div>
+  <div class="trust-item">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+    Multilingual Support
+  </div>
+</div>
+ 
+<!-- FEATURES -->
+<section class="section" id="features">
+  <div class="section-label">Core Features</div>
+  <h2 class="section-title">Everything an election needs,<br>nothing it doesn't</h2>
+  <p class="section-sub">Nine carefully designed pillars that cover every dimension of a secure, modern digital election.</p>
+ 
+  <div class="features-grid">
+    <div class="feat-card">
+      <div class="feat-icon bg-blue">🔐</div>
+      <h3>Secure Voter Authentication</h3>
+      <p>Multi-factor identity verification ensures only eligible, registered voters can access the ballot — no exceptions.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon bg-red">🤖</div>
+      <h3>AI Duplicate Detection</h3>
+      <p>Machine learning models analyze voting patterns in real-time to flag and block suspicious or duplicate activity instantly.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon bg-green">⚡</div>
+      <h3>Real-time Vote Counting</h3>
+      <p>Votes are tallied the moment they are cast. No waiting, no manual counting — results flow live to the dashboard.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon bg-purple">📊</div>
+      <h3>Fast Result Generation</h3>
+      <p>AI-powered result processing delivers verified, final election results within seconds of voting closure.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon bg-amber">🚨</div>
+      <h3>Fraud Activity Alerts</h3>
+      <p>Automated alerts notify election officers the moment anomalous patterns or suspicious behaviors are detected.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon bg-cyan">🌐</div>
+      <h3>Multilingual Voting</h3>
+      <p>Voters can participate in their preferred language, making elections truly inclusive across linguistic boundaries.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon bg-blue">🔒</div>
+      <h3>Encrypted Data Security</h3>
+      <p>Every vote is stored with AES-256 encryption. Blockchain-ready transaction logging ensures tamper-proof records.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon bg-green">📍</div>
+      <h3>Remote Voting Access</h3>
+      <p>Voters cast ballots from anywhere — home, office, or abroad — eliminating travel barriers to civic participation.</p>
+    </div>
+    <div class="feat-card">
+      <div class="feat-icon bg-purple">📄</div>
+      <h3>Automated Reporting</h3>
+      <p>Comprehensive reports on participation, turnout, demographics, and AI risk scores are generated automatically post-election.</p>
+    </div>
+  </div>
+</section>
+ 
+<!-- HOW IT WORKS -->
+<section class="how-section" id="how">
+  <div class="section-label">Process</div>
+  <h2 class="section-title">How VoteShield works</h2>
+  <p class="section-sub" style="color:rgba(255,255,255,0.45);">A seamless four-step journey from registration to certified results.</p>
+ 
+  <div class="steps-grid">
+    <div class="step">
+      <div class="step-num">01</div>
+      <div class="step-icon">📋</div>
+      <h3>Register & Verify</h3>
+      <p>Voters register with official ID credentials. The system verifies eligibility and activates the account through secure OTP confirmation.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">02</div>
+      <div class="step-icon">🗳️</div>
+      <h3>Authenticate & Vote</h3>
+      <p>On election day, voters log in with MFA, view candidate info, and securely cast their encrypted vote with a single confirmed action.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">03</div>
+      <div class="step-icon">🤖</div>
+      <h3>AI Monitors & Validates</h3>
+      <p>Every vote triggers an AI risk-scoring check. Suspicious patterns are flagged in real-time; clean votes are immediately counted.</p>
+    </div>
+    <div class="step">
+      <div class="step-num">04</div>
+      <div class="step-icon">📊</div>
+      <h3>Results & Reports</h3>
+      <p>Voting closes, final tallies are verified, and certified results with full audit trails and AI risk reports are published instantly.</p>
+    </div>
+  </div>
+</section>
+ 
+<!-- USER ROLES -->
+<section class="roles-section" id="roles">
+  <div class="section-label">User Profiles</div>
+  <h2 class="section-title">Four roles, one secure<br>ecosystem</h2>
+  <p class="section-sub">Each user type has precisely scoped access to keep the process clean, transparent, and accountable.</p>
+ 
+  <div class="roles-grid">
+    <div class="role-card voter">
+      <div class="role-label">Citizen</div>
+      <h3>Voter</h3>
+      <ul class="role-perms">
+        <li>Secure identity verification & authentication</li>
+        <li>Easy, guided ballot casting</li>
+        <li>View candidate profiles and party info</li>
+        <li>Receive instant vote confirmation receipt</li>
+      </ul>
+    </div>
+    <div class="role-card admin">
+      <div class="role-label">Platform</div>
+      <h3>Admin</h3>
+      <ul class="role-perms">
+        <li>Create, schedule, and configure elections</li>
+        <li>Manage candidate registrations</li>
+        <li>Voter database management</li>
+        <li>Declare and certify official results</li>
+      </ul>
+    </div>
+    <div class="role-card officer">
+      <div class="role-label">Field</div>
+      <h3>Election Officer</h3>
+      <ul class="role-perms">
+        <li>On-site voter verification support</li>
+        <li>Real-time polling process monitoring</li>
+        <li>Handle complaints and disputes</li>
+        <li>Assist special-needs and elderly voters</li>
+      </ul>
+    </div>
+    <div class="role-card sysadmin">
+      <div class="role-label">Operations</div>
+      <h3>System Administrator</h3>
+      <ul class="role-perms">
+        <li>System-wide security management</li>
+        <li>User access control and provisioning</li>
+        <li>AI monitoring supervision & tuning</li>
+        <li>Maintenance, updates, and backups</li>
+      </ul>
+    </div>
+  </div>
+</section>
+ 
+<!-- LIVE DASHBOARD PREVIEW -->
+<section class="dashboard-section" id="dashboard">
+  <div class="section-label">Live Dashboard</div>
+  <h2 class="section-title">Real-time election intelligence</h2>
+  <p class="section-sub">Admins and officers get a live command center — turnout, candidate stats, AI alerts, and activity logs at a glance.</p>
+ 
+  <div class="dash-wrap">
+    <div class="dash-topbar">
+      <div class="dot-r"></div><div class="dot-y"></div><div class="dot-g"></div>
+      <span class="dash-title">VoteShield Admin Dashboard — 2025 General Election (LIVE)</span>
+    </div>
+    <div class="dash-inner">
+      <div>
+        <div class="dash-stats">
+          <div class="dash-stat">
+            <div class="ds-num" style="color:var(--accent)">68.8%</div>
+            <div class="ds-lbl">Voter Turnout</div>
+            <div class="ds-trend">↑ 3.2% vs last hour</div>
+          </div>
+          <div class="dash-stat">
+            <div class="ds-num">2,94,601</div>
+            <div class="ds-lbl">Votes Cast</div>
+            <div class="ds-trend">↑ 1,204 last 5 min</div>
+          </div>
+          <div class="dash-stat">
+            <div class="ds-num" style="color:var(--accent2)">3</div>
+            <div class="ds-lbl">AI Flags Today</div>
+            <div class="ds-trend" style="color:var(--accent2)">↓ Resolved: 2</div>
+          </div>
+        </div>
+ 
+        <div class="chart-area">
+          <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:0.95rem;margin-bottom:4px;">Candidate Results (Live)</div>
+          <div style="font-size:0.78rem;color:var(--muted);">Provisional • Counts update every 10 seconds</div>
+          <div class="chart-bar-wrap" id="chartBars">
+            <div class="cbar">
+              <span class="cbar-name">Candidate A</span>
+              <div class="cbar-track"><div class="cbar-fill" style="width:0%;background:var(--accent)" data-target="42"></div></div>
+              <span class="cbar-pct">42%</span>
+            </div>
+            <div class="cbar">
+              <span class="cbar-name">Candidate B</span>
+              <div class="cbar-track"><div class="cbar-fill" style="width:0%;background:#ff3c1a" data-target="31"></div></div>
+              <span class="cbar-pct">31%</span>
+            </div>
+            <div class="cbar">
+              <span class="cbar-name">Candidate C</span>
+              <div class="cbar-track"><div class="cbar-fill" style="width:0%;background:var(--green)" data-target="18"></div></div>
+              <span class="cbar-pct">18%</span>
+            </div>
+            <div class="cbar">
+              <span class="cbar-name">Candidate D</span>
+              <div class="cbar-track"><div class="cbar-fill" style="width:0%;background:#7840ff" data-target="9"></div></div>
+              <span class="cbar-pct">9%</span>
+            </div>
+          </div>
+        </div>
+      </div>
+ 
+      <div class="dash-side">
+        <div class="ds-card">
+          <h4>🚨 AI Alerts</h4>
+          <div class="alert-item">
+            <div class="alert-dot" style="background:#d9900a"></div>
+            <p>Unusual voting speed from IP block 203.0.113.x — rate-limited pending review.</p>
+          </div>
+          <div class="alert-item">
+            <div class="alert-dot" style="background:var(--green)"></div>
+            <p>Resolved: Duplicate submission attempt from Voter #48291 blocked successfully.</p>
+          </div>
+          <div class="alert-item">
+            <div class="alert-dot" style="background:var(--accent)"></div>
+            <p>Turnout spike in District 7 — within normal election-day pattern. ✓ Clear</p>
+          </div>
+        </div>
+        <div class="ds-card">
+          <h4>⚡ Recent Activity</h4>
+          <div class="activity-list">
+            <div class="act-row"><span class="act-name">Voter #29847</span><span class="act-time">just now</span><span class="act-badge ab-ok">Voted</span></div>
+            <div class="act-row"><span class="act-name">Voter #11320</span><span class="act-time">12s ago</span><span class="act-badge ab-ok">Voted</span></div>
+            <div class="act-row"><span class="act-name">Voter #48291</span><span class="act-time">1m ago</span><span class="act-badge ab-warn">Flagged</span></div>
+            <div class="act-row"><span class="act-name">Voter #77400</span><span class="act-time">1m ago</span><span class="act-badge ab-ok">Voted</span></div>
+            <div class="act-row"><span class="act-name">Voter #92003</span><span class="act-time">2m ago</span><span class="act-badge ab-ok">Voted</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+ 
+<!-- TECH STACK -->
+<section class="tech-section" id="tech">
+  <div class="section-label">Technology</div>
+  <h2 class="section-title">Built on a production-grade<br>stack</h2>
+  <p class="section-sub">Enterprise-ready technologies chosen for security, scalability, and reliability under peak election load.</p>
+ 
+  <div class="tech-grid">
+    <div class="tech-cat">
+      <div class="tech-cat-label">⚙️ Backend</div>
+      <ul class="tech-list">
+        <li>Java 17</li>
+        <li>Spring Boot</li>
+        <li>Spring Web MVC</li>
+        <li>Spring Data JPA</li>
+        <li>Hibernate ORM</li>
+        <li>Spring Security</li>
+      </ul>
+    </div>
+    <div class="tech-cat">
+      <div class="tech-cat-label">🗄️ Database</div>
+      <ul class="tech-list">
+        <li>PostgreSQL / MySQL</li>
+        <li>Structured SQL Schema</li>
+        <li>Encrypted Vote Storage</li>
+        <li>Transaction Logging</li>
+        <li>Audit Trail DB</li>
+      </ul>
+    </div>
+    <div class="tech-cat">
+      <div class="tech-cat-label">🎨 Frontend</div>
+      <ul class="tech-list">
+        <li>React Dashboard</li>
+        <li>Material UI</li>
+        <li>Chart.js</li>
+        <li>Responsive Web Design</li>
+        <li>Multilingual i18n</li>
+      </ul>
+    </div>
+    <div class="tech-cat">
+      <div class="tech-cat-label">🤖 AI Layer</div>
+      <ul class="tech-list">
+        <li>Duplicate Vote Detection</li>
+        <li>Activity Pattern Analysis</li>
+        <li>Risk Scoring Engine</li>
+        <li>Automated Fraud Alerts</li>
+        <li>Behavioral Biometrics</li>
+      </ul>
+    </div>
+  </div>
+</section>
+ 
+<!-- CTA -->
+<section class="cta-section">
+  <div class="cta-box">
+    <h2>Ready to modernize your election?</h2>
+    <p>Join the future of democratic participation — secure, transparent, and accessible from anywhere.</p>
+    <div class="cta-actions">
+      <a href="/login" class="btn-white">Cast Your Vote →</a>
+      <a href="/admin" class="btn-outline-white">Admin Panel</a>
+    </div>
+  </div>
+</section>
+ 
+<!-- FOOTER -->
+<footer>
+  <div>
+    <strong>VoteShield AI</strong> · Online Polling Management System<br>
+    B V Raju Institution of Technology · CSE Department · Capstone 2025
+  </div>
+  <div class="footer-links">
+    <a href="#features">Features</a>
+    <a href="#how">How It Works</a>
+    <a href="#roles">Roles</a>
+    <a href="/login">Voter Login</a>
+    <a href="/admin">Admin</a>
+  </div>
+  <div>Built by Mokshith Reddy, Siddarth, Sneha, Sai Sreethan</div>
+</footer>
+ 
+<script>
+  // Animate chart bars on load
+  setTimeout(() => {
+    document.querySelectorAll('.cbar-fill').forEach(bar => {
+      const target = bar.getAttribute('data-target');
+      bar.style.width = target + '%';
+    });
+  }, 600);
+ 
+  // Intersection Observer for section animations
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => { if (e.isIntersecting) { e.target.style.opacity = '1'; e.target.style.transform = 'translateY(0)'; } });
+  }, { threshold: 0.1 });
+  document.querySelectorAll('.feat-card, .step, .role-card, .tech-cat').forEach(el => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
+    el.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+    obs.observe(el);
+  });
+</script>
+</body>
+</html>

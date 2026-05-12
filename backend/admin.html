@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin Dashboard – VoteShield AI</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+<style>
+  :root{
+    --ink:#0a0f1e;--paper:#f5f3ee;--accent:#1a3cff;--soft:#e8e5dd;--muted:#7a7870;
+    --green:#00c97c;--red:#ff3c1a;--amber:#f59e0b;--border:rgba(10,15,30,0.09);
+  }
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+  body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);display:flex;min-height:100vh;overflow-x:hidden;}
+ 
+  /* SIDEBAR */
+  .sidebar{width:240px;background:var(--ink);color:#fff;display:flex;flex-direction:column;flex-shrink:0;position:fixed;top:0;left:0;bottom:0;padding:24px 0;z-index:100;}
+  .sb-brand{padding:0 24px 28px;border-bottom:1px solid rgba(255,255,255,0.06);margin-bottom:16px;}
+  .sb-brand-name{font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;display:flex;align-items:center;gap:8px;}
+  .sb-brand-icon{width:28px;height:28px;background:var(--accent);border-radius:6px;display:flex;align-items:center;justify-content:center;}
+  .sb-brand-icon svg{width:15px;height:15px;fill:#fff;}
+  .sb-role{font-size:0.7rem;color:rgba(255,255,255,0.3);margin-top:4px;letter-spacing:0.05em;text-transform:uppercase;}
+  .sb-section{padding:0 12px 8px;font-size:0.65rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:rgba(255,255,255,0.25);margin-top:16px;}
+  .sb-link{display:flex;align-items:center;gap:10px;padding:11px 14px;border-radius:8px;font-size:0.85rem;color:rgba(255,255,255,0.55);text-decoration:none;cursor:pointer;transition:all 0.15s;margin:0 8px;}
+  .sb-link:hover{background:rgba(255,255,255,0.06);color:#fff;}
+  .sb-link.active{background:var(--accent);color:#fff;box-shadow:0 4px 12px rgba(26,60,255,0.25);}
+  .sb-link .icon{font-size:1rem;width:22px;text-align:center;flex-shrink:0;}
+  .sb-spacer{flex:1;}
+  .sb-user{margin:0 12px;padding:12px;background:rgba(255,255,255,0.05);border-radius:10px;display:flex;align-items:center;gap:10px;}
+  .sb-avatar{width:32px;height:32px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-family:'Syne',sans-serif;font-weight:700;font-size:0.8rem;flex-shrink:0;}
+  .sb-user-info .name{font-size:0.83rem;font-weight:600;}
+  .sb-user-info .role{font-size:0.68rem;color:rgba(255,255,255,0.35);}
+ 
+  /* MAIN */
+  .main{margin-left:240px;flex:1;display:flex;flex-direction:column;}
+  .topbar{background:#fff;border-bottom:1px solid var(--border);padding:0 32px;height:70px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;}
+  .topbar-left h1{font-family:'Syne',sans-serif;font-weight:800;font-size:1.25rem;letter-spacing:-0.02em;}
+  .topbar-left p{font-size:0.78rem;color:var(--muted);margin-top:2px;}
+  .topbar-right{display:flex;align-items:center;gap:12px;}
+  .live-badge{display:flex;align-items:center;gap:6px;background:rgba(0,201,124,0.1);border:1px solid rgba(0,201,124,0.2);color:var(--green);font-size:0.75rem;font-weight:600;padding:6px 14px;border-radius:100px;}
+  .live-dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:pulse-live 1.5s infinite;}
+  @keyframes pulse-live{0%,100%{opacity:1}50%{opacity:0.3}}
+  .icon-btn{background:var(--paper);border:1px solid var(--border);border-radius:8px;padding:8px 10px;cursor:pointer;font-size:1rem;transition:background 0.2s;}
+  .icon-btn:hover{background:var(--soft);}
+  
+  .content{padding:32px;flex:1;}
+ 
+  /* PANES */
+  .admin-pane { display: none; }
+  .admin-pane.active { display: block; animation: paneFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+  @keyframes paneFadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* STATS ROW */
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-bottom:28px;}
+  .stat-card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:22px;transition:box-shadow 0.2s;}
+  .stat-card:hover{box-shadow:0 8px 28px rgba(0,0,0,0.06);transform:translateY(-1px);}
+  .stat-card-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+  .stat-card-icon{width:40px;height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:1.1rem;}
+  .stat-change{font-size:0.72rem;font-weight:600;padding:3px 8px;border-radius:100px;}
+  .up{background:rgba(0,201,124,0.10);color:var(--green);}
+  .warn{background:rgba(245,158,11,0.12);color:var(--amber);}
+  .stat-num{font-family:'Syne',sans-serif;font-weight:800;font-size:1.9rem;line-height:1;}
+  .stat-lbl{font-size:0.78rem;color:var(--muted);margin-top:4px;}
+ 
+  /* GRID LAYOUT */
+  .grid-2-1{display:grid;grid-template-columns:2fr 1fr;gap:20px;margin-bottom:20px;}
+  .grid-1-1{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px;}
+  .card{background:#fff;border:1px solid var(--border);border-radius:16px;padding:24px;margin-bottom:20px;box-shadow:0 2px 10px rgba(0,0,0,0.01);}
+  .card-title{font-family:'Syne',sans-serif;font-weight:800;font-size:1.05rem;margin-bottom:4px;letter-spacing:-0.01em;}
+  .card-sub{font-size:0.75rem;color:var(--muted);margin-bottom:20px;}
+ 
+  /* Candidate bars */
+  .cand-list{display:flex;flex-direction:column;gap:16px;}
+  .cand-row { margin-bottom: 10px; }
+  .cand-meta{display:flex;justify-content:space-between;margin-bottom:6px;}
+  .cand-name{font-weight:600;font-size:0.88rem;}
+  .cand-party{font-size:0.72rem;color:var(--muted);}
+  .cand-pct{font-family:'Syne',sans-serif;font-weight:700;font-size:0.9rem;}
+  .cand-track{height:8px;background:var(--paper);border-radius:100px;overflow:hidden;}
+  .cand-fill {
+    height: 100%;
+    border-radius: 100px;
+    width: 0%;
+    transition: width 1.5s cubic-bezier(0.19,1,0.22,1);
+  }
+ 
+  /* Table */
+  table{width:100%;border-collapse:collapse;font-size:0.83rem;}
+  thead th{text-align:left;padding:12px;font-size:0.7rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);}
+  tbody td{padding:14px 12px;border-bottom:1px solid rgba(10,15,30,0.05);color:var(--ink);}
+  tbody tr:last-child td{border-bottom:none;}
+  tbody tr:hover{background:var(--paper);}
+  .badge{font-size:0.68rem;font-weight:700;padding:4px 10px;border-radius:100px;display:inline-block;}
+  .b-ok{background:rgba(0,201,124,0.10);color:var(--green);}
+  .b-warn{background:rgba(245,158,11,0.12);color:var(--amber);}
+  .b-err{background:rgba(255,60,26,0.10);color:var(--red);}
+  .b-blue{background:rgba(26,60,255,0.10);color:var(--accent);}
+ 
+  /* Progress ring */
+  .ring-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px 0;}
+  svg.ring{transform:rotate(-90deg);}
+  .ring-val{font-family:'Syne',sans-serif;font-weight:800;font-size:2rem;text-align:center;margin-top:12px;}
+  .ring-lbl{font-size:0.78rem;color:var(--muted);text-align:center;}
+ 
+  /* Alerts */
+  .alert-list{display:flex;flex-direction:column;gap:10px;}
+  .alert-row{display:flex;align-items:flex-start;gap:12px;padding:14px;border-radius:12px;background:var(--paper);transition:transform 0.15s;}
+  .alert-row:hover{transform:translateX(2px);}
+  .alert-icon{font-size:1.1rem;flex-shrink:0;margin-top:1px;}
+  .alert-text p{font-size:0.82rem;line-height:1.5;}
+  .alert-text span{font-size:0.7rem;color:var(--muted);margin-top:4px;display:block;}
+  .alert-row.danger{background:rgba(255,60,26,0.05);border:1px solid rgba(255,60,26,0.12);}
+  .alert-row.warning{background:rgba(245,158,11,0.06);border:1px solid rgba(245,158,11,0.18);}
+  .alert-row.success{background:rgba(0,201,124,0.06);border:1px solid rgba(0,201,124,0.18);}
+ 
+  /* Election cards */
+  .election-cards{display:flex;flex-direction:column;gap:12px;}
+  .el-card{border:1px solid var(--border);border-radius:12px;padding:14px 18px;display:flex;align-items:center;gap:14px;background:#fff;transition:all 0.15s;}
+  .el-card:hover{border-color:rgba(26,60,255,0.25);background:rgba(26,60,255,0.02);transform:translateY(-1px);}
+  .el-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;}
+  .el-info{flex:1;}
+  .el-name{font-weight:600;font-size:0.88rem;}
+  .el-date{font-size:0.72rem;color:var(--muted);margin-top:2px;}
+  .el-status{font-size:0.7rem;font-weight:700;padding:3px 10px;border-radius:100px;text-transform:uppercase;}
+
+  /* Inputs & Buttons */
+  .btn-primary {
+    background: var(--ink); color: #fff; border: none; padding: 12px 24px; border-radius: 100px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.88rem; cursor: pointer; transition: all 0.2s;
+    display: inline-flex; align-items: center; gap: 8px; border: 1px solid transparent;
+  }
+  .btn-primary:hover { background: var(--accent); box-shadow: 0 4px 14px rgba(26,60,255,0.25); transform: translateY(-1px); }
+  .btn-danger {
+    background: rgba(255,60,26,0.08); color: var(--red); border: 1px solid rgba(255,60,26,0.15); padding: 8px 16px; border-radius: 8px;
+    font-family: 'DM Sans', sans-serif; font-weight: 600; font-size: 0.8rem; cursor: pointer; transition: all 0.2s;
+  }
+  .btn-danger:hover { background: var(--red); color: #fff; box-shadow: 0 4px 12px rgba(255,60,26,0.2); }
+  
+  .input-text {
+    width: 100%; padding: 12px 16px; border: 1.5px solid var(--border); border-radius: 10px;
+    font-family: 'DM Sans', sans-serif; font-size: 0.9rem; outline: none; transition: all 0.2s; background: #fff;
+  }
+  .input-text:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(26,60,255,0.1); }
+
+  @media(max-width:1024px){.sidebar{display:none;}.main{margin-left:0;}.stats-row{grid-template-columns:1fr 1fr;}.grid-2-1{grid-template-columns:1fr;}.grid-1-1{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+ 
+<!-- SIDEBAR -->
+<nav class="sidebar">
+  <div class="sb-brand">
+    <div class="sb-brand-name">
+      <div class="sb-brand-icon">
+        <svg viewBox="0 0 16 16"><path d="M8 1L2 4v4c0 3.3 2.5 6.4 6 7 3.5-.6 6-3.7 6-7V4L8 1z"/></svg>
+      </div>
+      VoteShield AI
+    </div>
+    <div class="sb-role">System Administration</div>
+  </div>
+ 
+  <div class="sb-section">Overview</div>
+  <a class="sb-link active" onclick="switchAdminTab('dashboard', this)"><span class="icon">📊</span> Dashboard</a>
+  <a class="sb-link" onclick="switchAdminTab('elections', this)"><span class="icon">🗳️</span> Elections</a>
+  <a class="sb-link" onclick="switchAdminTab('candidates', this)"><span class="icon">👥</span> Candidates</a>
+  <a class="sb-link" onclick="switchAdminTab('voters', this)"><span class="icon">🪪</span> Voters Directory</a>
+ 
+  <div class="sb-section">Monitoring</div>
+  <a class="sb-link" onclick="switchAdminTab('alerts', this)"><span class="icon">🤖</span> AI Fraud Alerts</a>
+  <a class="sb-link" onclick="switchAdminTab('activity', this)"><span class="icon">⚡</span> Live Activity</a>
+ 
+  <div class="sb-spacer"></div>
+  <a class="sb-link" href="/" style="margin-bottom: 16px;"><span class="icon">🌐</span> Public Portal</a>
+  <a class="sb-link" href="/logout" style="margin-bottom: 16px; color:rgba(255,60,26,0.8);"><span class="icon">🔓</span> Logout</a>
+
+  <div class="sb-user">
+    <div class="sb-avatar">MR</div>
+    <div class="sb-user-info">
+      <div class="name">Mokshith R.</div>
+      <div class="role">Super Admin</div>
+    </div>
+  </div>
+</nav>
+ 
+<!-- MAIN CONTENT -->
+<div class="main">
+  <div class="topbar">
+    <div class="topbar-left">
+      <h1 id="topbarTitle">Election Command Center</h1>
+      <p id="topbarSub">AI-Powered Online Polling Security Protocol</p>
+    </div>
+    <div class="topbar-right">
+      <div class="live-badge"><div class="live-dot"></div> MONITORING LIVE</div>
+      <button class="icon-btn" title="Export Text Report" onclick="exportResults()">📥 Export</button>
+      <a href="/login" style="background:var(--ink);color:#fff;padding:10px 20px;border-radius:100px;font-size:0.83rem;font-weight:600;text-decoration:none;font-family:'Syne',sans-serif;">Voter Login →</a>
+    </div>
+  </div>
+ 
+  <div class="content">
+ 
+    <!-- 1. DASHBOARD PANE -->
+    <div class="admin-pane active" id="dashboardPane">
+      <!-- STATS ROW -->
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-icon" style="background:rgba(26,60,255,0.08); color:var(--accent);">🗳️</div>
+            <span class="stat-change up">Live Count</span>
+          </div>
+          <div class="stat-num" id="totalVotesCard">0</div>
+          <div class="stat-lbl">Votes Cast</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-icon" style="background:rgba(0,201,124,0.10); color:var(--green);">👥</div>
+            <span class="stat-change up" id="turnoutRate">0%</span>
+          </div>
+          <div class="stat-num" id="totalVotersCard">0</div>
+          <div class="stat-lbl">Registered Voters</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-icon" style="background:rgba(255,60,26,0.08); color:var(--red);">🚨</div>
+            <span class="stat-change warn" id="activeFraudFlags">0 Flags</span>
+          </div>
+          <div class="stat-num" id="totalFraudCard">0</div>
+          <div class="stat-lbl">Biometric Fraud Flags</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-card-top">
+            <div class="stat-card-icon" style="background:rgba(245,158,11,0.10); color:var(--amber);">⏱️</div>
+            <span class="stat-change up" id="votingStateBadge">ACTIVE</span>
+          </div>
+          <div class="stat-num" id="votingTimeLeft">OPEN</div>
+          <div class="stat-lbl">Electoral Status</div>
+        </div>
+      </div>
+   
+      <!-- CANDIDATE RESULTS + TURNOUT -->
+      <div class="grid-2-1">
+        <div class="card">
+          <div class="card-title">Live Candidate Results</div>
+          <div class="card-sub">Provisional count · Updates dynamically via Socket.io</div>
+          <div class="cand-list" id="candidateBars"></div>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;">
+          <div class="card-title">Voter Turnout</div>
+          <div class="card-sub">Electoral Participation rate</div>
+          <div class="ring-wrap" style="flex:1;">
+            <svg class="ring" width="140" height="140" viewBox="0 0 140 140">
+              <circle cx="70" cy="70" r="56" fill="none" stroke="#e8e5dd" stroke-width="12"/>
+              <circle cx="70" cy="70" r="56" fill="none" stroke="#1a3cff" stroke-width="12" stroke-linecap="round"
+                stroke-dasharray="351.86" stroke-dashoffset="351.86" id="turnoutRing" style="transition:stroke-dashoffset 2s ease;"/>
+            </svg>
+            <div class="ring-val" id="turnoutPercent">0%</div>
+            <div class="ring-lbl" id="turnoutText">0 of 0 voted</div>
+          </div>
+        </div>
+      </div>
+   
+      <!-- QUICK CONTROLS AREA -->
+      <div class="grid-1-1">
+        <div class="card">
+          <div class="card-title">Quick Action Center</div>
+          <div class="card-sub">Global administrative states</div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+            <button class="btn-primary" onclick="toggleVoting()">🔒 Open / Close Voting</button>
+            <button class="btn-primary" onclick="showWinner()">🏆 Declare Winner</button>
+            <button class="btn-primary" onclick="exportResults()">📊 Export Results Report</button>
+            <button class="btn-danger" onclick="resetVoting()" style="border-radius:100px;">🔄 Hard Reset Database</button>
+          </div>
+        </div>
+        
+        <div class="card">
+          <div class="card-title">Live Results Chart</div>
+          <div class="card-sub">Graphical tabulation</div>
+          <canvas id="resultChart" style="max-height:160px; width:100%;"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- 2. ELECTIONS MANAGEMENT PANE -->
+    <div class="admin-pane" id="electionsPane">
+      <div class="grid-2-1">
+        <div class="card">
+          <div class="card-title">Electoral Calendar</div>
+          <div class="card-sub">Active and upcoming polls</div>
+          <div class="election-cards" id="electionsList"></div>
+        </div>
+        
+        <div class="card">
+          <div class="card-title">Create New Poll</div>
+          <div class="card-sub">Add a new voting catalog</div>
+          <div style="display:flex; flex-direction:column; gap:15px;">
+            <div>
+              <label style="font-size:0.8rem; font-weight:700; margin-bottom:6px; display:block;">Election Name</label>
+              <input type="text" id="newElName" class="input-text" placeholder="e.g. 2026 Assembly Elections">
+            </div>
+            <div>
+              <label style="font-size:0.8rem; font-weight:700; margin-bottom:6px; display:block;">Status</label>
+              <select id="newElStatus" class="input-text" style="background:#fff;">
+                <option value="live">Live Now</option>
+                <option value="scheduled">Scheduled / Dormant</option>
+                <option value="upcoming">Upcoming</option>
+              </select>
+            </div>
+            <button class="btn-primary" onclick="createElection()" style="margin-top:10px;">➕ Add Election</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 3. CANDIDATES PANE -->
+    <div class="admin-pane" id="candidatesPane">
+      <div class="grid-2-1">
+        <div class="card">
+          <div class="card-title">Electoral Candidate Registry</div>
+          <div class="card-sub">Active candidates in MongoDB</div>
+          <div id="adminCandidateList" style="display:flex; flex-direction:column; gap:12px;"></div>
+        </div>
+        
+        <div class="card">
+          <div class="card-title">Register Candidate</div>
+          <div class="card-sub">Register candidates into active registry</div>
+          <div style="display:flex; flex-direction:column; gap:15px;">
+            <div>
+              <label style="font-size:0.8rem; font-weight:700; margin-bottom:6px; display:block;">Candidate Name</label>
+              <input type="text" id="newCandName" class="input-text" placeholder="Full name">
+            </div>
+            <div>
+              <label style="font-size:0.8rem; font-weight:700; margin-bottom:6px; display:block;">Party Affiliation</label>
+              <input type="text" id="newCandParty" class="input-text" placeholder="Political party identifier">
+            </div>
+            <button class="btn-primary" onclick="addCandidate()" style="margin-top:10px;">➕ Add Candidate</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4. VOTERS PANE -->
+    <div class="admin-pane" id="votersPane">
+      <div class="card">
+        <div class="card-title">Electoral Voter Registry</div>
+        <div class="card-sub">Registered rolls and biometric states</div>
+        <div style="overflow-x:auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Voter ID</th>
+                <th>Birth Date</th>
+                <th>Phone Number</th>
+                <th>Demographics</th>
+                <th>Voting Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="votersListTable"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- 5. AI ALERTS PANE -->
+    <div class="admin-pane" id="alertsPane">
+      <div class="grid-2-1">
+        <div class="card">
+          <div class="card-title">Biometric Fraud Anomaly Signals</div>
+          <div class="card-sub">Dynamic streams from MongoDB anomaly score parser</div>
+          <div class="alert-list" id="alertsTabFeed"></div>
+        </div>
+        
+        <div class="card">
+          <div class="card-title">Security Settings</div>
+          <div class="card-sub">Biometric models and parameters</div>
+          <p style="font-size:0.83rem; line-height:1.6; color:var(--muted); margin-bottom:15px;">
+            Face verification runs custom HOG model encodings verified against MongoDB 128D numpy lists.
+          </p>
+          <p style="font-size:0.83rem; line-height:1.6; color:var(--muted);">
+            Threshold is calibrated to <strong>50%</strong> (Euclidean Distance limit <code>0.50</code>) for optimized webcam matching.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. LIVE ACTIVITY PANE -->
+    <div class="admin-pane" id="activityPane">
+      <div class="card">
+        <div class="card-title">Live Voter Activity Feed</div>
+        <div class="card-sub">Voter receipts mapped by location in real-time</div>
+        <table>
+          <thead>
+            <tr>
+              <th>Voter ID</th>
+              <th>Time</th>
+              <th>District / State</th>
+            </tr>
+          </thead>
+          <tbody id="activityTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+  // Tab Switching Controller
+  function switchAdminTab(paneId, element) {
+    document.querySelectorAll('.admin-pane').forEach(pane => {
+      pane.classList.remove('active');
+    });
+    
+    const targetPane = document.getElementById(paneId + 'Pane');
+    if(targetPane) {
+      targetPane.classList.add('active');
+    }
+
+    document.querySelectorAll('.sb-link').forEach(link => {
+      link.classList.remove('active');
+    });
+    if(element) {
+      element.classList.add('active');
+    }
+
+    // Set dynamic titles
+    const titleObj = {
+      'dashboard': { title: 'Election Command Center', sub: 'AI-Powered Online Polling Security Protocol' },
+      'elections': { title: 'Elections Calendar', sub: 'Add, remove and deploy voting schedules' },
+      'candidates': { title: 'Candidate Registry', sub: 'Add and remove official candidate list' },
+      'voters': { title: 'Registered Citizens Directory', sub: 'Verify identity registries and delete voter cards' },
+      'alerts': { title: 'AI Fraud Monitoring Alerts', sub: 'Real-time anomaly flags caught by face model matching' },
+      'activity': { title: 'Real-time Ballot Auditing Feed', sub: 'Encrypted votes logs matching voter locations' }
+    };
+
+    if(titleObj[paneId]) {
+      document.getElementById('topbarTitle').innerText = titleObj[paneId].title;
+      document.getElementById('topbarSub').innerText = titleObj[paneId].sub;
+    }
+
+    // Trigger loads
+    if(paneId === 'candidates') {
+      loadCandidatesForAdmin();
+    } else if(paneId === 'voters') {
+      loadVotersForAdmin();
+    } else if(paneId === 'elections') {
+      loadElections();
+    }
+  }
+
+  // Socket setup
+  const socket = io();
+  socket.on("updateResults", () => {
+    loadResults();
+    loadCandidateBars();
+    loadStats();
+    if(document.getElementById('candidatesPane').classList.contains('active')) {
+      loadCandidatesForAdmin();
+    }
+    if(document.getElementById('votersPane').classList.contains('active')) {
+      loadVotersForAdmin();
+    }
+  });
+
+  socket.on("fraudAlert", () => {
+    loadFraudAlerts();
+    loadStats();
+  });
+
+  // Toggle Voting Open/Close
+  function toggleVoting() {
+    fetch('/toggle-voting', { method:'POST' })
+      .then(res => res.json())
+      .then(data => {
+        if(data.success){
+          alert("Voting is now " + (data.status ? "OPEN" : "CLOSED"));
+          loadStats();
+        } else {
+          alert("Failed to toggle voting.");
+        }
+      })
+      .catch(err => alert("Error: " + err));
+  }
+
+  // Declare Results / Winner
+  function showWinner(){
+    fetch('/winner')
+    .then(res => res.json())
+    .then(data => {
+      if(data.name){
+        alert("🏆 WINNER DECLARED:\n\nCandidate: " + data.name + "\nVotes Gained: " + data.votes + " votes");
+      } else {
+        alert("No winner calculated yet (Wait for votes to register).");
+      }
+    });
+  }
+
+  // Export Results
+  function exportResults(){
+    fetch('/results')
+    .then(res=>res.json())
+    .then(data=>{
+      let text = "========================================\n";
+      text += "      VOTESHIELD AI ELECTION REPORT\n";
+      text += "========================================\n\n";
+      data.forEach(c=>{
+        text += `• ${c.name} (${c.party}) - ${c.votes} votes (${c.percentage}%)\n`;
+      });
+      text += "\nReport Generated at: " + new Date().toLocaleString() + "\n";
+
+      const blob = new Blob([text], {type:"text/plain"});
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "VoteShield_Election_Results.txt";
+      a.click();
+    });
+  }
+
+  // Hard Reset Database
+  function resetVoting(){
+    if(!confirm("⚠️ CAUTION: Are you sure you want to reset the entire election database? This will reset all votes and voter has_voted flags!")) return;
+
+    fetch('/reset-voting', { method:'POST' })
+    .then(res => res.json())
+    .then(data => {
+      if(data.success){
+        alert("Database Reset Completed successfully ✅");
+        loadResults();
+        loadCandidateBars();
+        loadStats();
+        if(document.getElementById('votersPane').classList.contains('active')) {
+          loadVotersForAdmin();
+        }
+      }
+    });
+  }
+
+  // Load candidate bars in Dashboard
+  function loadCandidateBars(){
+    fetch('/results')
+    .then(res => res.json())
+    .then(data => {
+      const container = document.getElementById('candidateBars');
+      if(!container) return;
+      container.innerHTML = "";
+
+      data.forEach(c => {
+        const color = getRandomColor();
+        const row = `
+          <div class="cand-row">
+            <div class="cand-meta">
+              <span>
+                <span class="cand-name">${c.name}</span> <span class="cand-party">(${c.party})</span>
+              </span>
+              <span class="cand-pct" style="color:${color}">
+                ${c.percentage}%
+              </span>
+            </div>
+            <div class="cand-track">
+              <div class="cand-fill" data-width="${c.percentage}" style="background:${color}; width:0%"></div>
+            </div>
+          </div>
+        `;
+        container.innerHTML += row;
+      });
+
+      setTimeout(() => {
+        document.querySelectorAll('.cand-fill').forEach(bar => {
+          bar.style.width = bar.getAttribute('data-width') + '%';
+        });
+      }, 200);
+    });
+  }
+
+  // Load voters list in Admin page
+  function loadVotersForAdmin(){
+    fetch('/get-voters')
+    .then(res => res.json())
+    .then(data => {
+      const table = document.getElementById('votersListTable');
+      if(!table) return;
+      table.innerHTML = "";
+
+      if(data.length === 0){
+        table.innerHTML = `<tr><td colspan="6" style="text-align:center; color:var(--muted);">No registered voters found.</td></tr>`;
+        return;
+      }
+
+      data.forEach(v => {
+        const statusBadge = v.has_voted 
+          ? `<span class="badge b-ok">VOTED</span>` 
+          : `<span class="badge b-blue">ELIGIBLE</span>`;
+
+        const row = `
+          <tr>
+            <td style="font-weight:600;">${v.username}</td>
+            <td>${v.dob}</td>
+            <td>${v.phone || "N/A"}</td>
+            <td>${v.district || "N/A"}, ${v.state || "N/A"}</td>
+            <td>${statusBadge}</td>
+            <td>
+              <button onclick="deleteVoter('${v.username}')" class="btn-danger" style="padding:4px 10px; font-size:0.7rem;">Delete</button>
+            </td>
+          </tr>
+        `;
+        table.innerHTML += row;
+      });
+    });
+  }
+
+  function deleteVoter(username) {
+    if(!confirm("Unregister and delete voter ID '" + username + "'?")) return;
+    fetch('/delete-voter', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if(data.success){
+        alert("Voter account removed!");
+        loadVotersForAdmin();
+        loadStats();
+      }
+    });
+  }
+
+  // Load Candidates in Candidates Pane
+  function loadCandidatesForAdmin(){
+    fetch('/get-candidates')
+    .then(res => res.json())
+    .then(data => {
+      const container = document.getElementById('adminCandidateList');
+      if(!container) return;
+      container.innerHTML = "";
+
+      if(data.length === 0){
+        container.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">No candidates registered.</p>`;
+        return;
+      }
+
+      data.forEach(c => {
+        const div = document.createElement('div');
+        div.style = "display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border:1px solid var(--border); border-radius:12px; background:#fff;";
+        div.innerHTML = `
+          <div>
+            <div style="font-weight:600; font-size:0.9rem;">${c.name}</div>
+            <div style="font-size:0.75rem; color:var(--muted);">${c.party}</div>
+          </div>
+          <button onclick="deleteCandidateAdmin('${c.name}')" class="btn-danger">Delete</button>
+        `;
+        container.appendChild(div);
+      });
+    });
+  }
+
+  function deleteCandidateAdmin(name){
+    if(!confirm("Are you sure you want to delete candidate: " + name + "?")) return;
+    fetch('/delete-candidate', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if(data.success){
+        alert("Candidate Deleted!");
+        loadCandidatesForAdmin();
+        loadCandidateBars();
+        loadResults();
+      }
+    });
+  }
+
+  // Add Candidate
+  function addCandidate(){
+    const name = document.getElementById('newCandName').value.trim();
+    const party = document.getElementById('newCandParty').value.trim();
+
+    if(!name || !party) {
+      alert("Please fill all candidate inputs.");
+      return;
+    }
+
+    fetch('/add-candidate', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({name, party})
+    })
+    .then(res=>res.json())
+    .then(data=>{
+      if(data.success){
+        alert("Candidate Registered!");
+        document.getElementById('newCandName').value = "";
+        document.getElementById('newCandParty').value = "";
+        loadCandidatesForAdmin();
+        loadCandidateBars();
+        loadResults();
+      } else {
+        alert("Error creating candidate: " + data.message);
+      }
+    });
+  }
+
+  // Elections Management
+  function loadElections(){
+    fetch('/get-elections')
+    .then(res=>res.json())
+    .then(data=>{
+      const container = document.getElementById('electionsList');
+      if(!container) return;
+      container.innerHTML = "";
+
+      if(data.length === 0){
+        container.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">No elections listed.</p>`;
+        return;
+      }
+
+      data.forEach(el => {
+        let color = "var(--green)";
+        if(el.status === "scheduled") color = "var(--muted)";
+        if(el.status === "upcoming") color = "var(--accent)";
+
+        const card = `
+          <div class="el-card">
+            <div class="el-dot" style="background:${color}"></div>
+            <div class="el-info">
+              <div class="el-name">${el.name}</div>
+              <div class="el-date">Status: ${el.status.toUpperCase()}</div>
+            </div>
+            <button onclick="deleteElection('${el.name}')" class="btn-danger" style="padding:4px 8px; font-size:0.72rem;">Delete</button>
+          </div>
+        `;
+        container.innerHTML += card;
+      });
+    });
+  }
+
+  function createElection(){
+    const name = document.getElementById('newElName').value.trim();
+    const status = document.getElementById('newElStatus').value;
+
+    if(!name) {
+      alert("Please enter election name.");
+      return;
+    }
+
+    fetch('/add-election', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ name, status })
+    })
+    .then(res=>res.json())
+    .then(data=>{
+      if(data.success){
+        alert("Election created successfully!");
+        document.getElementById('newElName').value = "";
+        loadElections();
+      }
+    });
+  }
+
+  function deleteElection(name) {
+    if(!confirm("Remove election: '" + name + "'?")) return;
+    fetch('/delete-election', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if(data.success){
+        alert("Election removed!");
+        loadElections();
+      }
+    });
+  }
+
+  // Live Chart Loader
+  function loadResults(){
+    fetch('/results')
+    .then(res => res.json())
+    .then(data => {
+      const names = data.map(c => c.name);
+      const votes = data.map(c => c.votes);
+      const ctx = document.getElementById('resultChart').getContext('2d');
+
+      if(!window.chart){
+        window.chart = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels: names,
+            datasets: [{
+              label: 'Votes Gained',
+              data: votes,
+              backgroundColor: ['#1a3cff','#ff3c1a','#00c97c','#7840ff','#f59e0b'],
+              borderRadius: 6
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, grid: { color: 'rgba(10,15,30,0.04)' } }, x: { grid: { display: false } } }
+          }
+        });
+      } else {
+        window.chart.data.labels = names;
+        window.chart.data.datasets[0].data = votes;
+        window.chart.update();
+      }
+    });
+  }
+
+  // Load Live Activity table
+  function loadActivity(){
+    fetch('/recent-activity')
+    .then(res => res.json())
+    .then(data => {
+      const table = document.getElementById('activityTable');
+      if(!table) return;
+      table.innerHTML = "";
+
+      if(data.length === 0){
+        table.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--muted);">No recent vote receipts recorded.</td></tr>`;
+        return;
+      }
+
+      data.forEach(a => {
+        const timeStr = a.time ? new Date(a.time).toLocaleTimeString() : "Just now";
+        const row = `
+          <tr>
+            <td style="font-weight:600;">${a.voter_id}</td>
+            <td>${timeStr}</td>
+            <td>${a.district || "Unknown"}</td>
+          </tr>
+        `;
+        table.innerHTML += row;
+      });
+    });
+  }
+
+  // Fraud alerts streams
+  function loadFraudAlerts(){
+    fetch('/fraud-alerts')
+    .then(res=>res.json())
+    .then(data=>{
+      const alertsPaneFeed = document.getElementById('alertsTabFeed');
+      if(alertsPaneFeed) {
+        alertsPaneFeed.innerHTML = "";
+        if(data.length === 0){
+          alertsPaneFeed.innerHTML = `<p style="color:var(--muted); font-size:0.85rem;">All systems clear. No biometric threats detected.</p>`;
+        } else {
+          data.forEach(a => {
+            let type = "warning";
+            let statusText = "FLAGGED";
+            let iconStr = "⚠️";
+            if(a.status === "blocked") { type = "danger"; statusText = "BLOCKED"; iconStr = "🚨"; }
+            if(a.status === "clear") { type = "success"; statusText = "RESOLVED"; iconStr = "✅"; }
+
+            const row = `
+              <div class="alert-row ${type}">
+                <span class="alert-icon">${iconStr}</span>
+                <div class="alert-text">
+                  <p><strong>${statusText}:</strong> Voter ID: <code>${a.voter_id}</code> exhibited biometric score distance matching <code>${a.risk_score || "N/A"}%</code>.</p>
+                  <span>Detected: ${a.time ? new Date(a.time).toLocaleTimeString() : "Recent"}</span>
+                </div>
+              </div>
+            `;
+            alertsPaneFeed.innerHTML += row;
+          });
+        }
+      }
+    });
+  }
+
+  // Load overview stats
+  function loadStats(){
+    fetch('/stats')
+    .then(res => res.json())
+    .then(data => {
+      document.getElementById('totalVotesCard').innerText = data.total_votes || 0;
+      document.getElementById('totalVotersCard').innerText = data.total_voters || 0;
+      document.getElementById('totalFraudCard').innerText = data.fraud_count || 0;
+      document.getElementById('activeFraudFlags').innerText = (data.fraud_count || 0) + " Flags";
+      document.getElementById('votingTimeLeft').innerText = data.time_left || "N/A";
+      document.getElementById('votingStateBadge').innerText = data.time_left === "CLOSED" ? "CLOSED" : "ACTIVE";
+
+      let percent = 0;
+      if(data.total_voters > 0){
+        percent = ((data.total_votes / data.total_voters) * 100).toFixed(1);
+      }
+
+      document.getElementById('turnoutPercent').innerText = percent + "%";
+      document.getElementById('turnoutRate').innerText = "↑ " + percent + "%";
+      document.getElementById('turnoutText').innerText = `${data.total_votes} of ${data.total_voters} voted`;
+
+      // Animate progress circle
+      const circumference = 351.86;
+      const offset = circumference - (percent / 100) * circumference;
+      const ring = document.getElementById('turnoutRing');
+      if(ring) ring.style.strokeDashoffset = offset;
+    });
+  }
+
+  function getRandomColor(){
+    const colors = ['#1a3cff','#ff3c1a','#00c97c','#7840ff','#f59e0b'];
+    return colors[Math.floor(Math.random() * colors.length)];
+  }
+
+  // Initial loops
+  loadFraudAlerts();
+  loadResults();
+  loadCandidateBars();
+  loadStats();
+  loadElections();
+  loadActivity();
+
+  // Intervals
+  setInterval(loadActivity, 5000);
+  setInterval(loadFraudAlerts, 5000);
+  setInterval(loadStats, 5000);
+
+</script>
+</body>
+</html>
