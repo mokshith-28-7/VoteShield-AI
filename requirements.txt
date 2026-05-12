@@ -7,3 +7,4 @@ gunicorn
 eventlet
 numpy
 opencv-python-headless
+pytesseract
