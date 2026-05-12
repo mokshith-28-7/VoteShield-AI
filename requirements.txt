@@ -1,10 +1,10 @@
-flask
+Flask
 flask-cors
 flask-socketio
-pymongo
 python-dotenv
-gunicorn
-eventlet
-numpy
+pymongo
 opencv-python-headless
+numpy
 pytesseract
+eventlet
+gunicorn

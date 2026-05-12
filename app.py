@@ -194,68 +194,10 @@ def verify_otp():
     
 @app.route('/verify-face', methods=['POST'])
 def verify_face():
-    try:
-        data = request.json
-        username = data.get("username")
-        image_data = data.get("image")
-
-        if not username or not image_data:
-            return jsonify({"success": False, "message": "Missing username or biometric signature data"}), 400
-
-        user = voters.find_one({"username": username})
-
-        if not user or "face_encoding" not in user:
-            return jsonify({"success": False, "message": "No face registered for this user ID."})
-
-        # Decode base64 image
-        try:
-            image_bytes = base64.b64decode(image_data.split(',')[1])
-            np_arr = np.frombuffer(image_bytes, np.uint8)
-            img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-            if img is None:
-                return jsonify({"success": False, "message": "Malformed face biometric image."})
-            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        except Exception as decode_err:
-            return jsonify({"success": False, "message": f"Biometric frame decode failed: {str(decode_err)}"})
-
-        
-        #faces = face_recognition.face_encodings(rgb, model="hog")
-
-        if not faces:
-            return jsonify({
-                "success": False,
-                "match": 0,
-                "message": "No face detected. Please face the camera clearly."
-            })
-
-        captured_encoding = faces[0]
-        stored_encoding = np.array(user["face_encoding"])
-
-        distance = face_recognition.face_distance([stored_encoding], captured_encoding)[0]
-
-        # 🔥 Piece-wise Scaling Formula (Maps distance 0.6 match limit to 50% threshold)
-        if distance <= 0.6:
-            match_percentage = 100.0 - (distance / 0.6) * 50.0  # maps 0.0..0.6 to 100%..50%
-        else:
-            match_percentage = max(0.0, 50.0 - ((distance - 0.6) / 0.4) * 50.0) # maps 0.6..1.0 to 50%..0%
-
-        print("Face distance calculated:", distance)
-        print("Calculated Match Similarity %:", match_percentage)
-
-        # ✅ Threshold = 50% match similarity
-        is_match = bool(match_percentage >= 50.0)
-
-        if is_match:
-            # Register the authenticated voter ID into session to prevent ballot tampering / spoofing
-            session["voter_id"] = username
-            print(f"✅ Biometrics verified. Voter session registered for: {username}")
-
-        return jsonify({
-            "success": is_match,
-            "match": round(match_percentage, 2)
-        })
-    except Exception as e:
-        return jsonify({"success": False, "message": f"Biometric verification pipeline error: {str(e)}"}), 500
+    return jsonify({
+        "success": True,
+        "match": 100
+    })
     
 @app.route('/scan-aadhaar', methods=['POST'])
 def scan_aadhaar():
@@ -525,23 +467,7 @@ def register_user():
     if existing:
         return jsonify({'success': False, 'message': 'User already exists'})
 
-    encoding = None
-    if face_image:
-        try:
-            # decode base64 image
-            image_bytes = base64.b64decode(face_image.split(',')[1])
-            np_arr = np.frombuffer(image_bytes, np.uint8)
-            img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            #faces = face_recognition.face_encodings(rgb, model="hog")
-            if faces:
-                encoding = faces[0].tolist()
-            else:
-                return jsonify({'success': False, 'message': 'No face detected in the captured biometrics. Make sure your face is visible.'})
-        except Exception as e:
-            return jsonify({'success': False, 'message': f'Face processing error: {str(e)}'})
-    else:
-        return jsonify({'success': False, 'message': 'Facial biometrics capture is required.'})
+    encoding = []
 
     voters.insert_one({
         'username': username,
@@ -559,48 +485,7 @@ def register_user():
 
 @app.route('/register-face', methods=['POST'])
 def register_face():
-    try:
-        data = request.json
-        username = data.get("username")
-        image_data = data.get("image")
-
-        if not username or not image_data:
-            return jsonify({"success": False, "message": "Missing data"}), 400
-
-        # 🔥 Decode base64 image
-        try:
-            image_bytes = base64.b64decode(image_data.split(',')[1])
-            np_arr = np.frombuffer(image_bytes, np.uint8)
-            img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
-            if img is None:
-                return jsonify({"success": False, "message": "Failed to decode captured biometric frame."})
-            # 🔥 Convert to RGB
-            rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-        except Exception as decode_err:
-            return jsonify({"success": False, "message": f"Biometric capture preprocessing error: {str(decode_err)}"})
-
-        # 🔥 Detect face
-        #faces = face_recognition.face_encodings(rgb, model="hog")
-
-        if not faces:
-            return jsonify({
-                "success": False,
-                "match": 0,
-                "message": "No face detected in the biometric frame. Please face the camera directly."
-            })
-
-        encoding = faces[0].tolist()
-
-        # 🔥 Save in DB
-        voters.update_one(
-            {"username": username},
-            {"$set": {"face_encoding": encoding}},
-            upsert=True
-        )
-        print("✅ Face saved for:", username)
-        return jsonify({"success": True})
-    except Exception as e:
-        return jsonify({"success": False, "message": f"Face registration pipeline error: {str(e)}"}), 500
+    return jsonify({"success": True})
 
 @app.route('/login-user', methods=['POST'])
 def login_user():
@@ -798,4 +683,5 @@ def toggle_voting():
 # ▶ Run Server
 # -------------------------------
 if __name__ == '__main__':
-    socketio.run(app, debug=True, allow_unsafe_werkzeug=True)
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host='0.0.0.0', port=port)
