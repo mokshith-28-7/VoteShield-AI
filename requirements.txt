@@ -8,3 +8,5 @@ eventlet
 numpy
 opencv-python-headless
 pytesseract
+face-recognition
+cmake
