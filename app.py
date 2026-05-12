@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from flask import redirect
 import pytesseract
 import base64
-import face_recognition
+#import face_recognition
 import re
 import os
 import cv2
@@ -218,7 +218,8 @@ def verify_face():
         except Exception as decode_err:
             return jsonify({"success": False, "message": f"Biometric frame decode failed: {str(decode_err)}"})
 
-        faces = face_recognition.face_encodings(rgb, model="hog")
+        
+        #faces = face_recognition.face_encodings(rgb, model="hog")
 
         if not faces:
             return jsonify({
@@ -532,7 +533,7 @@ def register_user():
             np_arr = np.frombuffer(image_bytes, np.uint8)
             img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
             rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-            faces = face_recognition.face_encodings(rgb, model="hog")
+            #faces = face_recognition.face_encodings(rgb, model="hog")
             if faces:
                 encoding = faces[0].tolist()
             else:
@@ -579,7 +580,7 @@ def register_face():
             return jsonify({"success": False, "message": f"Biometric capture preprocessing error: {str(decode_err)}"})
 
         # 🔥 Detect face
-        faces = face_recognition.face_encodings(rgb, model="hog")
+        #faces = face_recognition.face_encodings(rgb, model="hog")
 
         if not faces:
             return jsonify({
